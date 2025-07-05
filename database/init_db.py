@@ -1,7 +1,7 @@
 import sqlite3
 
 # Crea / conecta la base de datos
-conn = sqlite3.connect("database/siniestros.db")
+conn = sqlite3.connect("siniestros.db")
 
 # crea el cursor con el cual se ejecutan comandos SQL
 cursor = conn.cursor()
@@ -27,6 +27,19 @@ CREATE TABLE IF NOT EXISTS siniestros (
 )
 """
 )
+
+#Crea tabla files
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS files (
+    id INTEGER PRIMARY KEY,
+    siniestro_id INTEGER NOT NULL,
+    file_name TEXT,
+    file_type TEXT,
+    location TEXT NOT NULL,
+    FOREIGN KEY (siniestro_id) REFERENCES siniestros(id)
+)
+""")
+
 
 #Confirma los cambios
 conn.commit()
