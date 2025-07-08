@@ -12,7 +12,6 @@ def get_connection():
 
 # -------- CLIENTES --------
 
-
 def create_client(name):
     conn = get_connection()
     cursor = conn.cursor()
@@ -62,4 +61,33 @@ def list_siniestros():
 
     conn.close()
 
+    return list
+
+
+#-------- ARCHIVOS --------
+
+def create_file(siniestro_id, file_name, file_type, location):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    INSERT INTO files (siniestro_id, file_name, file_type, location) 
+    VALUES (?,?,?,?)""",
+    (siniestro_id, file_name, file_type, location))
+
+    conn.commit()
+    conn.close()
+
+
+def list_files(siniestro_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    #selecciona solo archivos cuyo siniestro_id coincida
+    cursor.execute("""
+        SELECT * FROM files WHERE siniestro_id = ?""",
+        (siniestro_id,))
+    list = cursor.fetchall()
+
+    conn.close()
     return list
