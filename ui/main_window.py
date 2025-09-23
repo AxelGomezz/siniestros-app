@@ -1,106 +1,314 @@
+# main_window.py
 import customtkinter as ctk
 from customtkinter import CTkImage
 from PIL import Image
+import tkinter.filedialog as fd  # para adjuntar archivos en la vista de carga
 
-from add_siniestro_window import AddSiniestroWindow
+# (Opcional) cuando conectes el back:
+# from services.siniestros import list_siniestros, create_siniestro, create_file, list_files, create_client
 
-# Configuraciones globales
+# =========================
+# Config global de la app
+# =========================
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
-
-# window principal
 window = ctk.CTk(fg_color="#0A0A0A")
-    #window.overrideredirect(True)
 window.title("Gestor de Siniestros")
-window.geometry("900x600")
+window.geometry("1024x640")
 window.grid_rowconfigure(1, weight=1)
 window.grid_columnconfigure(1, weight=1)
 
-# Encabezado
-#header = ctk.CTkLabel(window, text="Gestor de Siniestros", font=("Arial", 20))
-#header.grid(row=0, column=0, columnspan=2, pady=10)
+# =========================
+#    MAIN FRAME (derecha)
+# =========================
+main_frame = ctk.CTkFrame(window, fg_color="#242424")
+main_frame.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
+main_frame.grid_rowconfigure(1, weight=1)   # zona de contenido dinámico
+main_frame.grid_columnconfigure(0, weight=1)
 
-#================================================================================
-#                                   SIDEBAR
-#================================================================================
-sidebar = ctk.CTkFrame(window, width=300, fg_color="#161616", corner_radius=0)
+# ---------- SEARCH BAR ----------
+search_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+search_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+search_frame.grid_columnconfigure(0, weight=1)
+
+search_entry = ctk.CTkEntry(
+    search_frame,
+    placeholder_text="Buscar por cliente, patente o fecha",
+    width=700,
+    border_width=0
+)
+search_entry.grid(row=0, column=0, sticky="ew", padx=6, pady=6)
+
+img_search = CTkImage(light_image=Image.open("icons/search.png"), size=(20, 20))
+def on_search_click():
+    query = search_entry.get().strip()
+    # TODO: cuando conectes back: clear_and_mount(render_list_siniestros, query=query)
+    print("[BUSCAR] ->", query)
+
+search_button = ctk.CTkButton(
+    search_frame, text="", image=img_search, width=44, height=36,
+    fg_color="#161616", hover_color="#5e5bad", command=on_search_click
+)
+search_button.grid(row=0, column=1, padx=6, pady=6)
+
+# ---------- CONTENIDO DINÁMICO ----------
+content_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+content_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
+
+def clear_and_mount(view_fn, *args, **kwargs):
+    """Limpia y monta la vista que se pase como función (recibe parent)."""
+    for w in content_frame.winfo_children():
+        w.destroy()
+    view_fn(content_frame, *args, **kwargs)
+
+# =========================
+#         VISTAS
+# =========================
+def render_home(parent):
+    """Inicio: últimos siniestros (tabla minimal)."""
+    quick = ctk.CTkFrame(parent, fg_color="transparent")
+    quick.pack(fill="both", expand=True, padx=0, pady=0)
+
+    title = ctk.CTkLabel(quick, text="Últimos siniestros", font=("Roboto", 16, "bold"))
+    title.grid(row=0, column=0, sticky="w", pady=(0, 6))
+
+    table = ctk.CTkFrame(quick, fg_color="#2A2A2A", corner_radius=8)
+    table.grid(row=1, column=0, sticky="nsew")
+    quick.grid_rowconfigure(1, weight=1)
+    quick.grid_columnconfigure(0, weight=1)
+
+    header = ctk.CTkFrame(table, fg_color="#252525", corner_radius=8)
+    header.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
+    for i, col in enumerate(("Patente", "Cliente", "Fecha")):
+        ctk.CTkLabel(header, text=col, font=("Roboto", 12, "bold"))\
+            .grid(row=0, column=i, sticky="w", padx=(10 if i == 0 else 6, 6), pady=6)
+    header.grid_columnconfigure(0, weight=2)
+    header.grid_columnconfigure(1, weight=5)
+    header.grid_columnconfigure(2, weight=2)
+
+    body = ctk.CTkScrollableFrame(table, fg_color="#2A2A2A", corner_radius=8)
+    body.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 8))
+    table.grid_rowconfigure(1, weight=1)
+    table.grid_columnconfigure(0, weight=1)
+
+    # TODO: reemplazar por query real a DB (ordenados desc por fecha, limit 4)
+    rows = [
+        {"id": 1, "patente": "ABC123", "cliente": "Carlos Rodríguez", "fecha": "2024-06-24"},
+        {"id": 2, "patente": "JKL456", "cliente": "María Pérez",     "fecha": "2024-07-02"},
+        {"id": 3, "patente": "MNO789", "cliente": "Juan Gómez",       "fecha": "2024-08-10"},
+        {"id": 4, "patente": "XYZ321", "cliente": "Ana López",        "fecha": "2024-09-05"},
+    ]
+
+    for r, dato in enumerate(rows):
+        row_btn = ctk.CTkButton(
+            body, text="", height=38,
+            fg_color="#333333" if r % 2 == 0 else "#303030",
+            hover_color="#3d3b6e", corner_radius=6
+        )
+        row_btn.grid(row=r, column=0, sticky="ew", padx=6, pady=4)
+        body.grid_columnconfigure(0, weight=1)
+
+        row_btn.grid_columnconfigure(0, weight=2)
+        row_btn.grid_columnconfigure(1, weight=5)
+        row_btn.grid_columnconfigure(2, weight=2)
+
+        ctk.CTkLabel(row_btn, text=dato["patente"], font=("Roboto", 12))\
+            .grid(row=0, column=0, sticky="w", padx=(10, 6))
+        ctk.CTkLabel(row_btn, text=dato["cliente"], font=("Roboto", 12))\
+            .grid(row=0, column=1, sticky="w", padx=6)
+        ctk.CTkLabel(row_btn, text=dato["fecha"], font=("Roboto", 12))\
+            .grid(row=0, column=2, sticky="w", padx=6)
+
+        row_btn.configure(command=lambda d=dato: clear_and_mount(render_detalle_siniestro, d))
+
+
+def render_list_siniestros(parent, query: str | None = None):
+    """Listado completo (filtrable más adelante)."""
+    wrapper = ctk.CTkFrame(parent, fg_color="transparent")
+    wrapper.pack(fill="both", expand=True)
+
+    titulo = "Todos los siniestros" if not query else f"Resultados para: {query}"
+    title = ctk.CTkLabel(wrapper, text=titulo, font=("Roboto", 16, "bold"))
+    title.pack(anchor="w", pady=(0, 8))
+
+    table = ctk.CTkScrollableFrame(wrapper, fg_color="#2A2A2A", corner_radius=8)
+    table.pack(fill="both", expand=True)
+
+    header = ctk.CTkFrame(table, fg_color="#252525", corner_radius=8)
+    header.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
+    header.grid_columnconfigure(0, weight=2)
+    header.grid_columnconfigure(1, weight=5)
+    header.grid_columnconfigure(2, weight=2)
+
+    ctk.CTkLabel(header, text="Patente", font=("Roboto", 12, "bold")).grid(row=0, column=0, sticky="w", padx=(10, 6), pady=6)
+    ctk.CTkLabel(header, text="Cliente", font=("Roboto", 12, "bold")).grid(row=0, column=1, sticky="w", padx=6, pady=6)
+    ctk.CTkLabel(header, text="Fecha",   font=("Roboto", 12, "bold")).grid(row=0, column=2, sticky="w", padx=6, pady=6)
+
+    # TODO: si query, aplicar filtro; si no, traer todos.
+    rows = [
+        {"id": 1, "patente": "ABC123", "cliente": "Carlos Rodríguez", "fecha": "2024-06-24"},
+        {"id": 2, "patente": "JKL456", "cliente": "María Pérez",     "fecha": "2024-07-02"},
+        {"id": 3, "patente": "MNO789", "cliente": "Juan Gómez",       "fecha": "2024-08-10"},
+        {"id": 4, "patente": "XYZ321", "cliente": "Ana López",        "fecha": "2024-09-05"},
+        {"id": 5, "patente": "AAA111", "cliente": "Pedro Núñez",      "fecha": "2024-09-15"},
+    ]
+    # Si quisieras simular filtro (placeholder):
+    if query:
+        q = query.lower()
+        rows = [r for r in rows if q in r["patente"].lower() or q in r["cliente"].lower() or q in r["fecha"].lower()]
+
+    for r, dato in enumerate(rows, start=1):
+        row = ctk.CTkFrame(table, fg_color="#333333" if r % 2 else "#303030", corner_radius=6)
+        row.grid(row=r, column=0, sticky="ew", padx=6, pady=4)
+        row.grid_columnconfigure(0, weight=2)
+        row.grid_columnconfigure(1, weight=5)
+        row.grid_columnconfigure(2, weight=2)
+
+        ctk.CTkLabel(row, text=dato["patente"]).grid(row=0, column=0, sticky="w", padx=(10, 6), pady=6)
+        ctk.CTkLabel(row, text=dato["cliente"]).grid(row=0, column=1, sticky="w", padx=6, pady=6)
+        ctk.CTkLabel(row, text=dato["fecha"]).grid(  row=0, column=2, sticky="w", padx=6, pady=6)
+
+        # Hacer clickeable toda la fila
+        def open_detail(_e=None, d=dato):
+            clear_and_mount(render_detalle_siniestro, d)
+
+        row.bind("<Button-1>", open_detail)
+        for child in row.winfo_children():
+            child.bind("<Button-1>", open_detail)
+
+
+def render_cargar_siniestro(parent):
+    """Formulario de alta."""
+    form = ctk.CTkFrame(parent, fg_color="#2A2A2A", corner_radius=10)
+    form.pack(fill="x", padx=10, pady=10)
+
+    ctk.CTkLabel(form, text="Cargar nuevo siniestro", font=("Roboto", 16, "bold"))\
+        .grid(row=0, column=0, columnspan=2, sticky="w", padx=12, pady=(12, 8))
+
+    labels = ["Cliente", "Fecha (YYYY-MM-DD)", "Patente", "Descripción"]
+    for i, label in enumerate(labels, start=1):
+        ctk.CTkLabel(form, text=label).grid(row=i, column=0, sticky="e", padx=10, pady=6)
+
+    entry_cliente = ctk.CTkEntry(form, width=360)
+    entry_fecha   = ctk.CTkEntry(form, width=360, placeholder_text="2025-09-23")
+    entry_patente = ctk.CTkEntry(form, width=360)
+    txt_desc      = ctk.CTkTextbox(form, width=360, height=100)
+
+    entry_cliente.grid(row=1, column=1, sticky="w", padx=10, pady=6)
+    entry_fecha.grid(  row=2, column=1, sticky="w", padx=10, pady=6)
+    entry_patente.grid(row=3, column=1, sticky="w", padx=10, pady=6)
+    txt_desc.grid(     row=4, column=1, sticky="w", padx=10, pady=6)
+
+    selected_files = []
+
+    def seleccionar_archivos():
+        files = fd.askopenfilenames(title="Seleccionar archivos del siniestro")
+        if files:
+            selected_files.clear()
+            selected_files.extend(files)
+            files_label.configure(text=f"{len(selected_files)} archivo(s) seleccionado(s)")
+
+    files_btn = ctk.CTkButton(form, text="Adjuntar archivos", command=seleccionar_archivos)
+    files_btn.grid(row=5, column=0, sticky="e", padx=10, pady=10)
+
+    files_label = ctk.CTkLabel(form, text="Ningún archivo seleccionado")
+    files_label.grid(row=5, column=1, sticky="w", padx=10, pady=10)
+
+    def guardar():
+        cliente = entry_cliente.get().strip()
+        fecha   = entry_fecha.get().strip()
+        patente = entry_patente.get().strip()
+        desc    = txt_desc.get("1.0", "end").strip()
+
+        # TODO: validar + crear en DB:
+        #   - si cliente no existe -> create_client(cliente)
+        #   - siniestro_id = create_siniestro(client_id, fecha, patente, desc)
+        #   - for path in selected_files: create_file(siniestro_id, file_name, file_type, location)
+        print("[GUARDAR]", cliente, fecha, patente, desc, selected_files)
+
+        # (Opcional) Ir al detalle del siniestro creado:
+        # clear_and_mount(render_detalle_siniestro, {"id": siniestro_id, "cliente": cliente, "patente": patente, "fecha": fecha})
+
+    ctk.CTkButton(form, text="Guardar siniestro", fg_color="#5e5bad", hover_color="#3b447d", command=guardar)\
+        .grid(row=6, column=0, columnspan=2, pady=(6, 14))
+
+
+def render_detalle_siniestro(parent, dato: dict):
+    """Detalle reutilizable (desde Inicio y Listado)."""
+    wrapper = ctk.CTkFrame(parent, fg_color="transparent")
+    wrapper.pack(fill="both", expand=True, padx=10, pady=10)
+
+    header = ctk.CTkFrame(wrapper, fg_color="transparent")
+    header.pack(fill="x", pady=(0, 6))
+
+    ctk.CTkLabel(header, text=f"Detalle — {dato.get('patente','—')}", font=("Roboto", 16, "bold"))\
+        .pack(side="left")
+
+    ctk.CTkButton(header, text="← Volver", width=90,
+                  command=lambda: clear_and_mount(render_list_siniestros))\
+        .pack(side="right")
+
+    panel = ctk.CTkFrame(wrapper, fg_color="#2A2A2A", corner_radius=10)
+    panel.pack(fill="x", pady=6)
+
+    grid = ctk.CTkFrame(panel, fg_color="transparent")
+    grid.pack(fill="x", padx=10, pady=10)
+
+    ctk.CTkLabel(grid, text=f"Cliente:  {dato.get('cliente','—')}").grid(row=0, column=0, sticky="w", padx=6, pady=4)
+    ctk.CTkLabel(grid, text=f"Patente:  {dato.get('patente','—')}").grid(row=1, column=0, sticky="w", padx=6, pady=4)
+    ctk.CTkLabel(grid, text=f"Fecha:    {dato.get('fecha','—')}").grid(  row=2, column=0, sticky="w", padx=6, pady=4)
+
+    files_box = ctk.CTkFrame(wrapper, fg_color="#2A2A2A", corner_radius=10)
+    files_box.pack(fill="both", expand=True, pady=10)
+    ctk.CTkLabel(files_box, text="Archivos adjuntos", font=("Roboto", 14, "bold")).pack(anchor="w", padx=10, pady=(10,4))
+
+    # TODO: reemplazar por list_files(dato['id'])
+    fake_files = ["foto_lateral.jpg", "constancia.pdf"]
+    for f in fake_files:
+        ctk.CTkButton(files_box, text=f"📄 {f}", height=34,
+                      fg_color="#333333", hover_color="#3d3b6e", anchor="w")\
+            .pack(fill="x", padx=10, pady=4)
+
+# =========================
+#        SIDEBAR (izq)
+# =========================
+sidebar = ctk.CTkFrame(window, width=280, fg_color="#161616", corner_radius=0)
 sidebar.grid(row=1, column=0, sticky="ns", padx=5, pady=5)
 
-#---------
-#  TITLE
-#---------
 appname = ctk.CTkLabel(sidebar, text="CustomSiniestrosApp", font=("Roboto", 16), anchor="center")
 appname.pack(fill="x", pady=10, padx=10)
 
+img_home = CTkImage(light_image=Image.open("icons/home.png"), size=(20, 20))
+btn_home = ctk.CTkButton(sidebar, width=200, height=36, text="Inicio",
+                         image=img_home, compound="left", anchor="w",
+                         fg_color="#161616", hover_color="#5e5bad",
+                         command=lambda: clear_and_mount(render_home))
+btn_home.pack(pady=6)
 
-#|--------------------|
-#|     BUTTON HOME    |
-#|--------------------|
-img_home = CTkImage(light_image=Image.open("icons/home.png"), size=(20, 20)) #Image Charged
+img_files = CTkImage(light_image=Image.open("icons/folder.png"), size=(20, 20))
+btn_ver = ctk.CTkButton(sidebar, width=200, height=36, text="Ver siniestros",
+                        image=img_files, compound="left", anchor="w",
+                        fg_color="#161616", hover_color="#5e5bad",
+                        command=lambda: clear_and_mount(render_list_siniestros))
+btn_ver.pack(pady=6)
 
-btn_home = ctk.CTkButton(
-    sidebar,
-    width=180,
-    height=30,
-    text="Inicio",
-    image=img_home, 
-    compound="left",
-    anchor="w",
-    fg_color="#161616", 
-    hover_color="#5e5bad"
-    )
-btn_home.pack(pady=5)
-
-
-#|--------------------|
-#|    BUTTON FILES    |
-#|--------------------|
-img_files = CTkImage(light_image=Image.open("icons/folder.png"), size=(20,20))
-
-btn_ver = ctk.CTkButton(
-    sidebar,
-    width=180,
-    height=30,
-    text="Ver siniestros",
-    image=img_files,
-    compound="left",
-    anchor="w",
-    fg_color="#161616",
-    hover_color="#5e5bad"
-    )
-btn_ver.pack(pady=10)
-
-#|--------|
-#| SPACER |
-#|--------|
 spacer = ctk.CTkFrame(sidebar, fg_color="#161616")
 spacer.pack(fill="both", expand=True)
 
-
-#|-------------------|
-#|    BUTTON LOAD    |
-#|-------------------|
-img_load = CTkImage(light_image=Image.open("icons/plus.png"), size=(20,20))
-
-btn_cargar = ctk.CTkButton(
-    sidebar,
-    width=180,
-    height=50,
-    corner_radius=10,
-    text="Cargar siniestro",
-    image=img_load,
-    compound="left",
-    fg_color="#5e5bad",
-    hover_color="#3b447d"
-    )
+img_load = CTkImage(light_image=Image.open("icons/plus.png"), size=(20, 20))
+btn_cargar = ctk.CTkButton(sidebar, width=200, height=42, corner_radius=10, text="Cargar siniestro",
+                           image=img_load, compound="left",
+                           fg_color="#5e5bad", hover_color="#3b447d",
+                           command=lambda: clear_and_mount(render_cargar_siniestro))
 btn_cargar.pack(pady=10)
 
+# =========================
+#   Mostrar Inicio al abrir
+# =========================
+clear_and_mount(render_home)
 
-# Área principal
-main_frame = ctk.CTkFrame(window)
-main_frame.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
-
-
-# Ejecutar app
+# =========================
+#        Run app
+# =========================
 window.mainloop()
