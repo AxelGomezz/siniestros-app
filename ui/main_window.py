@@ -1,4 +1,5 @@
 # main_window.py
+from services.siniestros import list_siniestros, get_or_create_client, create_siniestro, create_file, get_siniestro, list_files, list_last_siniestros
 import customtkinter as ctk
 from customtkinter import CTkImage
 from PIL import Image
@@ -30,8 +31,18 @@ main_frame.grid_columnconfigure(0, weight=1)
 # ---------- SEARCH BAR ----------
 search_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
 search_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-search_frame.grid_columnconfigure(0, weight=1)
+search_frame.grid_columnconfigure(0, weight=1)  # que el entry se estire
 
+img_search = CTkImage(light_image=Image.open("icons/search.png"), size=(20, 20))
+
+def on_search_click(event=None):
+    query = search_entry.get().strip()
+    if query:
+        clear_and_mount(render_list_siniestros, query=query)
+    else:
+        clear_and_mount(render_list_siniestros)
+
+# Entry
 search_entry = ctk.CTkEntry(
     search_frame,
     placeholder_text="Buscar por cliente, patente o fecha",
@@ -39,16 +50,18 @@ search_entry = ctk.CTkEntry(
     border_width=0
 )
 search_entry.grid(row=0, column=0, sticky="ew", padx=6, pady=6)
+search_entry.bind("<Return>", on_search_click)  # <-- bind después de definir la función
 
-img_search = CTkImage(light_image=Image.open("icons/search.png"), size=(20, 20))
-def on_search_click():
-    query = search_entry.get().strip()
-    # TODO: cuando conectes back: clear_and_mount(render_list_siniestros, query=query)
-    print("[BUSCAR] ->", query)
-
+# Botón lupa
 search_button = ctk.CTkButton(
-    search_frame, text="", image=img_search, width=44, height=36,
-    fg_color="#161616", hover_color="#5e5bad", command=on_search_click
+    search_frame,
+    text="",
+    image=img_search,
+    width=44,
+    height=36,
+    fg_color="#161616",
+    hover_color="#5e5bad",
+    command=on_search_click  # <-- usar la misma función
 )
 search_button.grid(row=0, column=1, padx=6, pady=6)
 
@@ -92,13 +105,8 @@ def render_home(parent):
     table.grid_rowconfigure(1, weight=1)
     table.grid_columnconfigure(0, weight=1)
 
-    # TODO: reemplazar por query real a DB (ordenados desc por fecha, limit 4)
-    rows = [
-        {"id": 1, "patente": "ABC123", "cliente": "Carlos Rodríguez", "fecha": "2024-06-24"},
-        {"id": 2, "patente": "JKL456", "cliente": "María Pérez",     "fecha": "2024-07-02"},
-        {"id": 3, "patente": "MNO789", "cliente": "Juan Gómez",       "fecha": "2024-08-10"},
-        {"id": 4, "patente": "XYZ321", "cliente": "Ana López",        "fecha": "2024-09-05"},
-    ]
+    rows = list_last_siniestros(limit=4)
+
 
     for r, dato in enumerate(rows):
         row_btn = ctk.CTkButton(
@@ -145,18 +153,14 @@ def render_list_siniestros(parent, query: str | None = None):
     ctk.CTkLabel(header, text="Cliente", font=("Roboto", 12, "bold")).grid(row=0, column=1, sticky="w", padx=6, pady=6)
     ctk.CTkLabel(header, text="Fecha",   font=("Roboto", 12, "bold")).grid(row=0, column=2, sticky="w", padx=6, pady=6)
 
-    # TODO: si query, aplicar filtro; si no, traer todos.
-    rows = [
-        {"id": 1, "patente": "ABC123", "cliente": "Carlos Rodríguez", "fecha": "2024-06-24"},
-        {"id": 2, "patente": "JKL456", "cliente": "María Pérez",     "fecha": "2024-07-02"},
-        {"id": 3, "patente": "MNO789", "cliente": "Juan Gómez",       "fecha": "2024-08-10"},
-        {"id": 4, "patente": "XYZ321", "cliente": "Ana López",        "fecha": "2024-09-05"},
-        {"id": 5, "patente": "AAA111", "cliente": "Pedro Núñez",      "fecha": "2024-09-15"},
-    ]
-    # Si quisieras simular filtro (placeholder):
+    # Traer siniestros reales desde la DB (ordenados por fecha desc)
+    rows = list_siniestros(order="date DESC")
+
+    # Si hay query, filtrar resultados en memoria
     if query:
         q = query.lower()
         rows = [r for r in rows if q in r["patente"].lower() or q in r["cliente"].lower() or q in r["fecha"].lower()]
+
 
     for r, dato in enumerate(rows, start=1):
         row = ctk.CTkFrame(table, fg_color="#333333" if r % 2 else "#303030", corner_radius=6)
