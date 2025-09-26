@@ -3,7 +3,14 @@ from services.siniestros import list_siniestros, get_or_create_client, create_si
 import customtkinter as ctk
 from customtkinter import CTkImage
 from PIL import Image
-import tkinter.filedialog as fd  # para adjuntar archivos en la vista de carga
+import tkinter.filedialog as fd
+import os, shutil, mimetypes
+from tkinter import messagebox as mb
+  # para adjuntar archivos en la vista de carga
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FILES_DIR = os.path.join(BASE_DIR, "archivos siniestros")
+os.makedirs(FILES_DIR, exist_ok=True)
 
 # (Opcional) cuando conectes el back:
 # from services.siniestros import list_siniestros, create_siniestro, create_file, list_files, create_client
@@ -219,23 +226,51 @@ def render_cargar_siniestro(parent):
     files_label = ctk.CTkLabel(form, text="Ningún archivo seleccionado")
     files_label.grid(row=5, column=1, sticky="w", padx=10, pady=10)
 
-    def guardar():
+def guardar():
+    try:
         cliente = entry_cliente.get().strip()
         fecha   = entry_fecha.get().strip()
         patente = entry_patente.get().strip()
         desc    = txt_desc.get("1.0", "end").strip()
 
-        # TODO: validar + crear en DB:
-        #   - si cliente no existe -> create_client(cliente)
-        #   - siniestro_id = create_siniestro(client_id, fecha, patente, desc)
-        #   - for path in selected_files: create_file(siniestro_id, file_name, file_type, location)
-        print("[GUARDAR]", cliente, fecha, patente, desc, selected_files)
+        if not cliente or not fecha or not patente:
+            mb.showerror("Campos obligatorios", "Completá Cliente, Fecha y Patente.")
+            return
 
-        # (Opcional) Ir al detalle del siniestro creado:
-        # clear_and_mount(render_detalle_siniestro, {"id": siniestro_id, "cliente": cliente, "patente": patente, "fecha": fecha})
+        # 1) Crear cliente si no existe
+        client_id = get_or_create_client(cliente)
 
-    ctk.CTkButton(form, text="Guardar siniestro", fg_color="#5e5bad", hover_color="#3b447d", command=guardar)\
-        .grid(row=6, column=0, columnspan=2, pady=(6, 14))
+        # 2) Crear siniestro
+        siniestro_id = create_siniestro(client_id, fecha, patente, desc)
+
+        # 3) Guardar archivos seleccionados
+        dest_dir = os.path.join(FILES_DIR, str(siniestro_id))
+        os.makedirs(dest_dir, exist_ok=True)
+
+        for src_path in selected_files:
+            fname = os.path.basename(src_path)
+            dest_path = os.path.join(dest_dir, fname)
+
+            shutil.copy2(src_path, dest_path)
+
+            mime, _ = mimetypes.guess_type(dest_path)
+            mime = mime or ""
+
+            rel_path = os.path.relpath(dest_path, BASE_DIR)
+
+            create_file(siniestro_id, fname, mime, rel_path)
+
+        mb.showinfo("Éxito", "Siniestro cargado correctamente.")
+
+        # 4) Mostrar detalle del siniestro recién creado
+        clear_and_mount(
+            render_detalle_siniestro,
+            {"id": siniestro_id, "cliente": cliente, "patente": patente, "fecha": fecha}
+        )
+
+    except Exception as e:
+        mb.showerror("Error al guardar", f"Ocurrió un problema:\n{e}")
+
 
 
 def render_detalle_siniestro(parent, dato: dict):
@@ -267,12 +302,21 @@ def render_detalle_siniestro(parent, dato: dict):
     files_box.pack(fill="both", expand=True, pady=10)
     ctk.CTkLabel(files_box, text="Archivos adjuntos", font=("Roboto", 14, "bold")).pack(anchor="w", padx=10, pady=(10,4))
 
-    # TODO: reemplazar por list_files(dato['id'])
-    fake_files = ["foto_lateral.jpg", "constancia.pdf"]
-    for f in fake_files:
-        ctk.CTkButton(files_box, text=f"📄 {f}", height=34,
-                      fg_color="#333333", hover_color="#3d3b6e", anchor="w")\
-            .pack(fill="x", padx=10, pady=4)
+    # --- Archivos adjuntos reales ---
+    files = list_files(dato["id"])  # devuelve [(id, siniestro_id, fname, ftype, location), ...]
+
+    for f in files:
+        file_id, siniestro_id, fname, ftype, location = f
+        ctk.CTkButton(
+            files_box,
+            text=f"📄 {fname}",
+            height=34,
+            fg_color="#333333",
+            hover_color="#3d3b6e",
+            anchor="w",
+            command=lambda path=os.path.join(BASE_DIR, location): os.startfile(path)
+        ).pack(fill="x", padx=10, pady=4)
+
 
 # =========================
 #        SIDEBAR (izq)
