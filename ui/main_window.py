@@ -323,6 +323,23 @@ def render_detalle_siniestro(parent, dato: dict):
     files_box.pack(fill="both", expand=True, pady=10)
     ctk.CTkLabel(files_box, text="Archivos adjuntos", font=("Roboto", 14, "bold")).pack(anchor="w", padx=10, pady=(10,4))
 
+        # --- Botón para abrir ubicación de los archivos ---
+    def abrir_ubicacion():
+        carpeta = os.path.join(FILES_DIR, str(dato["id"]))
+        if os.path.exists(carpeta):
+            os.startfile(carpeta)
+        else:
+            mb.showerror("Error", "La carpeta de este siniestro no existe.")
+
+    ctk.CTkButton(
+        files_box,
+        text="📂 Abrir ubicación de archivos",
+        fg_color="#444444",
+        hover_color="#3d3b6e",
+        command=abrir_ubicacion
+    ).pack(anchor="w", padx=10, pady=(0, 8))
+
+
     # --- Botón eliminar siniestro ---
     def eliminar():
         if mb.askyesno("Confirmar", "¿Seguro que querés eliminar este siniestro?"):
