@@ -191,6 +191,7 @@ def render_list_siniestros(parent, query: str | None = None):
 
 def render_cargar_siniestro(parent):
     """Formulario de alta."""
+    global entry_cliente, entry_fecha, entry_patente, txt_desc, selected_files
     form = ctk.CTkFrame(parent, fg_color="#2A2A2A", corner_radius=10)
     form.pack(fill="x", padx=10, pady=10)
 
@@ -225,6 +226,15 @@ def render_cargar_siniestro(parent):
 
     files_label = ctk.CTkLabel(form, text="Ningún archivo seleccionado")
     files_label.grid(row=5, column=1, sticky="w", padx=10, pady=10)
+    
+    btn_guardar = ctk.CTkButton(
+        form,
+        text="Guardar siniestro",
+        fg_color="#5e5bad",
+        hover_color="#3b447d",
+        command=guardar
+    )
+    btn_guardar.grid(row=6, column=0, columnspan=2, pady=10)
 
 def guardar():
     try:
