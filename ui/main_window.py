@@ -139,54 +139,65 @@ def render_home(parent):
 
 
 def render_list_siniestros(parent, query: str | None = None):
-    """Listado completo (filtrable más adelante)."""
+    """Listado completo de siniestros con diseño más vistoso y ancho completo."""
     wrapper = ctk.CTkFrame(parent, fg_color="transparent")
     wrapper.pack(fill="both", expand=True)
 
+    # ---------- Título ----------
     titulo = "Todos los siniestros" if not query else f"Resultados para: {query}"
-    title = ctk.CTkLabel(wrapper, text=titulo, font=("Roboto", 16, "bold"))
-    title.pack(anchor="w", pady=(0, 8))
+    title = ctk.CTkLabel(wrapper, text=titulo, font=("Roboto", 18, "bold"))
+    title.pack(anchor="w", padx=10, pady=(0, 10))
 
-    table = ctk.CTkScrollableFrame(wrapper, fg_color="#2A2A2A", corner_radius=8)
-    table.pack(fill="both", expand=True)
+    # ---------- Contenedor scroll ----------
+    table = ctk.CTkScrollableFrame(wrapper, fg_color="#1E1E1E", corner_radius=10)
+    table.pack(fill="both", expand=True, padx=10, pady=5)
+    table.grid_columnconfigure(0, weight=1)
 
-    header = ctk.CTkFrame(table, fg_color="#252525", corner_radius=8)
-    header.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
+    # ---------- Encabezado ----------
+    header = ctk.CTkFrame(table, fg_color="#3b447d", corner_radius=6)
+    header.grid(row=0, column=0, sticky="ew", padx=6, pady=(6, 4))
     header.grid_columnconfigure(0, weight=2)
     header.grid_columnconfigure(1, weight=5)
     header.grid_columnconfigure(2, weight=2)
 
-    ctk.CTkLabel(header, text="Patente", font=("Roboto", 12, "bold")).grid(row=0, column=0, sticky="w", padx=(10, 6), pady=6)
-    ctk.CTkLabel(header, text="Cliente", font=("Roboto", 12, "bold")).grid(row=0, column=1, sticky="w", padx=6, pady=6)
-    ctk.CTkLabel(header, text="Fecha",   font=("Roboto", 12, "bold")).grid(row=0, column=2, sticky="w", padx=6, pady=6)
+    ctk.CTkLabel(header, text="Patente", text_color="white",
+                 font=("Roboto", 13, "bold")).grid(row=0, column=0, padx=10, pady=8, sticky="w")
+    ctk.CTkLabel(header, text="Cliente", text_color="white",
+                 font=("Roboto", 13, "bold")).grid(row=0, column=1, padx=10, pady=8, sticky="w")
+    ctk.CTkLabel(header, text="Fecha", text_color="white",
+                 font=("Roboto", 13, "bold")).grid(row=0, column=2, padx=10, pady=8, sticky="w")
 
-    # Traer siniestros reales desde la DB (ordenados por fecha desc)
+    # ---------- Filas ----------
     rows = list_siniestros(order="date DESC")
 
-    # Si hay query, filtrar resultados en memoria
     if query:
         q = query.lower()
         rows = [r for r in rows if q in r["patente"].lower() or q in r["cliente"].lower() or q in r["fecha"].lower()]
 
-
     for r, dato in enumerate(rows, start=1):
-        row = ctk.CTkFrame(table, fg_color="#333333" if r % 2 else "#303030", corner_radius=6)
-        row.grid(row=r, column=0, sticky="ew", padx=6, pady=4)
-        row.grid_columnconfigure(0, weight=2)
-        row.grid_columnconfigure(1, weight=5)
-        row.grid_columnconfigure(2, weight=2)
+        bg_color = "#2d2d2d" if r % 2 else "#242424"
+        row_frame = ctk.CTkFrame(table, fg_color=bg_color, corner_radius=6)
+        row_frame.grid(row=r, column=0, sticky="ew", padx=6, pady=3)
+        row_frame.grid_columnconfigure(0, weight=2)
+        row_frame.grid_columnconfigure(1, weight=5)
+        row_frame.grid_columnconfigure(2, weight=2)
 
-        ctk.CTkLabel(row, text=dato["patente"]).grid(row=0, column=0, sticky="w", padx=(10, 6), pady=6)
-        ctk.CTkLabel(row, text=dato["cliente"]).grid(row=0, column=1, sticky="w", padx=6, pady=6)
-        ctk.CTkLabel(row, text=dato["fecha"]).grid(  row=0, column=2, sticky="w", padx=6, pady=6)
+        # Labels de info
+        ctk.CTkLabel(row_frame, text=dato["patente"], font=("Roboto", 12))\
+            .grid(row=0, column=0, padx=10, pady=8, sticky="w")
+        ctk.CTkLabel(row_frame, text=dato["cliente"], font=("Roboto", 12))\
+            .grid(row=0, column=1, padx=10, pady=8, sticky="w")
+        ctk.CTkLabel(row_frame, text=dato["fecha"], font=("Roboto", 12))\
+            .grid(row=0, column=2, padx=10, pady=8, sticky="w")
 
-        # Hacer clickeable toda la fila
+        # Hover effect + click en toda la fila
         def open_detail(_e=None, d=dato):
             clear_and_mount(render_detalle_siniestro, d)
 
-        row.bind("<Button-1>", open_detail)
-        for child in row.winfo_children():
+        row_frame.bind("<Button-1>", open_detail)
+        for child in row_frame.winfo_children():
             child.bind("<Button-1>", open_detail)
+
 
 
 def render_cargar_siniestro(parent):

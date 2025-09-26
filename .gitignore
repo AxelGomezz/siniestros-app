@@ -2,3 +2,4 @@ __pycache__
 .venv/
 archivos_siniestros/
 archivos siniestros/
+siniestros.db
