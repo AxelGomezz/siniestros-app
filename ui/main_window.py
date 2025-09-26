@@ -323,6 +323,23 @@ def render_detalle_siniestro(parent, dato: dict):
     files_box.pack(fill="both", expand=True, pady=10)
     ctk.CTkLabel(files_box, text="Archivos adjuntos", font=("Roboto", 14, "bold")).pack(anchor="w", padx=10, pady=(10,4))
 
+    # --- Botón eliminar siniestro ---
+    def eliminar():
+        if mb.askyesno("Confirmar", "¿Seguro que querés eliminar este siniestro?"):
+            from services.siniestros import delete_siniestro
+            delete_siniestro(dato["id"])
+            mb.showinfo("Eliminado", "El siniestro fue eliminado correctamente.")
+            clear_and_mount(render_list_siniestros)
+
+    ctk.CTkButton(
+        wrapper,
+        text="🗑 Eliminar siniestro",
+        fg_color="#a33c3c",
+        hover_color="#7a2d2d",
+        command=eliminar
+    ).pack(anchor="e", pady=(0, 8), padx=10)
+
+
     # --- Archivos adjuntos reales ---
     files = list_files(dato["id"])  # devuelve [(id, siniestro_id, fname, ftype, location), ...]
 
@@ -380,4 +397,8 @@ clear_and_mount(render_home)
 # =========================
 #        Run app
 # =========================
+def start_app():
+    clear_and_mount(render_home)
+    window.mainloop()
+
 window.mainloop()

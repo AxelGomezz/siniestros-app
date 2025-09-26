@@ -8,7 +8,42 @@ import os
 def get_connection():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(base_dir, "..", "database", "siniestros.db")
-    return sqlite3.connect(db_path)
+
+    # Verifica si la DB existe
+    first_time = not os.path.exists(db_path)
+
+    # Se conecta (esto también crea el archivo si no existe)
+    conn = sqlite3.connect(db_path)
+
+    # Si es la primera vez, crea las tablas necesarias
+    if first_time:
+        cur = conn.cursor()
+        cur.executescript("""
+        CREATE TABLE IF NOT EXISTS clients (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS siniestros (
+            id INTEGER PRIMARY KEY,
+            client_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            patente TEXT,
+            descripcion TEXT,
+            FOREIGN KEY (client_id) REFERENCES clients(id)
+        );
+        CREATE TABLE IF NOT EXISTS files (
+            id INTEGER PRIMARY KEY,
+            siniestro_id INTEGER NOT NULL,
+            file_name TEXT,
+            file_type TEXT,
+            location TEXT NOT NULL,
+            FOREIGN KEY (siniestro_id) REFERENCES siniestros(id)
+        );
+        """)
+        conn.commit()
+
+    return conn
+
 
 
 # --------------------------
@@ -132,6 +167,20 @@ def list_siniestros_raw():
     rows = cur.fetchall()
     conn.close()
     return rows
+
+def delete_siniestro(siniestro_id: int) -> None:
+    """Elimina un siniestro y sus archivos asociados en DB (NO borra físicamente los archivos)."""
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Primero borrar archivos asociados (DB)
+    cur.execute("DELETE FROM files WHERE siniestro_id = ?", (siniestro_id,))
+
+    # Luego borrar el siniestro
+    cur.execute("DELETE FROM siniestros WHERE id = ?", (siniestro_id,))
+
+    conn.commit()
+    conn.close()
 
 
 # --------------------------
